@@ -6,6 +6,7 @@ using System.Data.SqlClient;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Configuration;
 
 namespace FindOverUnderIssue
 {
@@ -14,37 +15,21 @@ namespace FindOverUnderIssue
     {
         static void Main(string[] args)
         {
-            string jobId, processIds = "";
-            string connectionString = "Data Source=pelican-fs3;Database=M1_PW;Integrated Security=true";
+            PelData.PelData pelData = new PelData.PelData();
 
+            string jobId = "";
+            
             Console.Write("Enter Job Number: ");
             jobId = Console.ReadLine();
 
-            string queryStringMaterialsTracking = "SELECT jmpJobId, jmoProcessID, jmmEstimatedQuantity, jmmQuantityReceived FROM UVWJOBANALYSIS_MATERIALS_TRACKING WHERE JMPJOBID = @jobId";
-            string queryStringLaborTracking = "SELECT jmpJobID, lmlProcessID, lmlEmployeeID, lmlGoodQuantity FROM UVWJOBANALYSIS_LABOR_TRACKING WHERE JMPJOBID = @jobId AND lmlProcessID IN @processIds";
-
             double estimatedQuantity, quantityReceived, percentDeviation = 0.000;
-            
+
             DataSet dsMaterials = new DataSet();
             DataTable dtMaterials = dsMaterials.Tables.Add("Materials");
             DataTable dtLabor = dsMaterials.Tables.Add("Labor");
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                using (SqlCommand command = new SqlCommand(queryStringMaterialsTracking, conn))
-                {
-                    command.Connection = conn;
-                    command.Parameters.Add("@jobId", SqlDbType.Char);
-                    command.Parameters["@jobId"].Value = jobId;
-                    conn.Open();
-                    using(SqlDataReader reader = command.ExecuteReader())
-                    {
-                        dtMaterials.Load(reader);
-                    }
-                    conn.Close();
-                }
-
-            }
+            dtMaterials = pelData.GetMaterialsDataTable(jobId);
+            
 
             dtMaterials.Columns.Add("Problem Row", typeof(Double));
 
@@ -70,52 +55,12 @@ namespace FindOverUnderIssue
                 Console.ResetColor();
             }
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                using (SqlCommand command = new SqlCommand(queryStringLaborTracking, conn))
-                {
-                    command.Connection = conn;
-                    command.Parameters.Add("@jobId", SqlDbType.Char);
-                    command.Parameters.Add("@processIds", SqlDbType.VarChar);
-
-                    command.Parameters["@jobId"].Value = jobId;
-                    //run this in sql and with parameters defined and see if get same client error. "'W_DHT', 'W_DHT'" as processIds parameter
-                    command.Parameters["@processIds"].Value = GetProcessIDs(dtMaterials, jobId);
-                    conn.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        dtLabor.Load(reader);
-                    }
-                    conn.Close();
-                }
-            }
+            dtLabor = pelData.GetLaborDataTable(dtMaterials, jobId);
 
 
                 Console.WriteLine("\nComplete");
             Console.ReadLine();
         }
-        /// <summary>
-        /// provide datatable and job id, return relevant process id's as string for db constraint
-        /// </summary>
-        /// <param name="mDataTable"></param>
-        /// <param name="mJobId"></param>
-        /// <returns></returns>
-        private static object GetProcessIDs(DataTable mDataTable, string mJobId)
-        {
-            List<string> mprocess = new List<string>(new string[] { });
-
-            foreach (DataRow dataRow in mDataTable.Rows)
-            {
-                if ((Convert.ToDouble(dataRow.ItemArray[3]) < -0.205) || (Convert.ToDouble(dataRow.ItemArray[3]) > 0.205))
-                {
-                    mprocess.Add("'" + dataRow.ItemArray[1].ToString() + "'");
-                }
-            }
-
-            var result = String.Join(", ", mprocess.ToArray());
-            result = result.Replace("\"", "'");
-
-            return result;
-        }
+        
     }
 }
