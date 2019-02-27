@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Biz\Biz.cs" />
+    <Compile Include="Biz\SendOutput.cs" />
     <Compile Include="Data\PelData.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

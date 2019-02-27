@@ -18,17 +18,19 @@ namespace FindOverUnderIssue.Biz
         public object GetProcessIDs(DataTable mDataTable, string mJobId)
         {
             List<string> mprocess = new List<string>(new string[] { });
+            int listCount = mprocess.Count + 1;
 
             foreach (DataRow dataRow in mDataTable.Rows)
             {
                 if ((Convert.ToDouble(dataRow.ItemArray[3]) < -0.205) || (Convert.ToDouble(dataRow.ItemArray[3]) > 0.205))
                 {
-                    mprocess.Add("'" + dataRow.ItemArray[1].ToString() + "'");
+                    mprocess.Add(dataRow.ItemArray[1].ToString());
                 }
             }
 
+            mprocess.Add(listCount.ToString());
+
             var result = String.Join(", ", mprocess.ToArray());
-            result = result.Replace("\"", "'");
 
             return result;
         }

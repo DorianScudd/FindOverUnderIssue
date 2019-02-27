@@ -14,10 +14,12 @@ namespace FindOverUnderIssue.PelData
     /// </summary>
     class PelData
     {
+        public double percentDeviation = 0.025;
 
         private string connectionString = ConfigurationManager.ConnectionStrings["Database"]?.ConnectionString;
 
         public string QueryStringMaterialsTracking { get; set; } = "SELECT jmpJobId, jmoProcessID, jmmEstimatedQuantity, jmmQuantityReceived FROM UVWJOBANALYSIS_MATERIALS_TRACKING WHERE JMPJOBID = @jobId";
+
         public string QueryStringLaborTracking { get; set; } = "SELECT jmpJobID, lmlProcessID, lmlEmployeeID, lmlGoodQuantity FROM UVWJOBANALYSIS_LABOR_TRACKING WHERE JMPJOBID = @jobId AND lmlProcessID IN @processIds";
 
         /// <summary>
@@ -36,15 +38,26 @@ namespace FindOverUnderIssue.PelData
                     command.Connection = conn;
                     command.Parameters.Add("@jobId", SqlDbType.Char);
                     command.Parameters["@jobId"].Value = jobId;
-                    conn.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
+
+                    try
                     {
-                        dataTable.Load(reader);
+                        conn.Open();
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                        conn.Close();
                     }
-                    conn.Close();
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Exception caught: {0}", ex.Message);
+                    }
+
                 }
 
             }
+            //column to identify if material issue is out of tolerance range
+            dataTable.Columns.Add("Problem Row", typeof(Double));
 
             return dataTable;
         }
@@ -59,18 +72,27 @@ namespace FindOverUnderIssue.PelData
                 using (SqlCommand command = new SqlCommand(QueryStringLaborTracking, conn))
                 {
                     command.Connection = conn;
-                    command.Parameters.Add("@jobId", SqlDbType.Char);
-                    command.Parameters.Add("@processIds", SqlDbType.VarChar);
+                    command.Parameters.AddWithValue("@jobId", SqlDbType.Char);
+                    command.Parameters.AddWithValue("@processIds", SqlDbType.VarChar);
 
                     command.Parameters["@jobId"].Value = jobId;
+
                     //run this in sql and with parameters defined and see if get same client error. "'W_DHT', 'W_DHT'" as processIds parameter
-                    command.Parameters["@processIds"].Value = processIds.GetProcessIDs(dtMaterials, jobId);
-                    conn.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    command.Parameters["@processIds"].Value = processIds.GetProcessIDs(dtMaterials, jobId).ToString();
+                    try
                     {
-                        dataTable.Load(reader);
+                        conn.Open();
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                        conn.Close();
                     }
-                    conn.Close();
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Exception caught: {0}", ex.Message);
+                    }
+
                 }
             }
             return dataTable;
