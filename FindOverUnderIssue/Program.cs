@@ -33,7 +33,7 @@ namespace FindOverUnderIssue
             try
             {
                 mScreen.PrintOut(dtMaterials);
-                Console.WriteLine("\nComplete");
+                Console.WriteLine("\nMaterials Complete");
             }
             catch (Exception ex)
             {
@@ -44,6 +44,9 @@ namespace FindOverUnderIssue
             try
             {
                 dtLabor = pelData.GetLaborDataTable(dtMaterials, jobId);
+
+                mScreen.PrintOut(dtLabor);
+                Console.WriteLine("\nLabor Complete");
             }
             catch (SqlException ex)
             {

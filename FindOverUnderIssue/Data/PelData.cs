@@ -16,11 +16,11 @@ namespace FindOverUnderIssue.PelData
     {
         public double percentDeviation = 0.025;
 
-        private string connectionString = ConfigurationManager.ConnectionStrings["Database"]?.ConnectionString;
+        private readonly string connectionString = ConfigurationManager.ConnectionStrings["Database"]?.ConnectionString;
 
         public string QueryStringMaterialsTracking { get; set; } = "SELECT jmpJobId, jmoProcessID, jmmEstimatedQuantity, jmmQuantityReceived FROM UVWJOBANALYSIS_MATERIALS_TRACKING WHERE JMPJOBID = @jobId";
 
-        public string QueryStringLaborTracking { get; set; } = "SELECT jmpJobID, lmlProcessID, lmlEmployeeID, lmlGoodQuantity FROM UVWJOBANALYSIS_LABOR_TRACKING WHERE JMPJOBID = @jobId AND lmlProcessID IN @processIds";
+        public string QueryStringLaborTracking { get; set; } = "SELECT jmpJobID, lmlProcessID, lmlEmployeeID, lmlGoodQuantity FROM UVWJOBANALYSIS_LABOR_TRACKING WHERE JMPJOBID = @jobId AND lmlProcessID IN (@p1, @p2, @p3, @p4, @p5, @p6)";
 
         /// <summary>
         /// Returns materials data table for a specific job
@@ -30,7 +30,10 @@ namespace FindOverUnderIssue.PelData
         /// <returns></returns>
         public DataTable GetMaterialsDataTable(string jobId)
         {
-            DataTable dataTable = new DataTable();
+            DataTable dataTable = new DataTable
+            {
+                TableName = "Materials"
+            };
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 using (SqlCommand command = new SqlCommand(QueryStringMaterialsTracking, conn))
@@ -64,8 +67,16 @@ namespace FindOverUnderIssue.PelData
 
         public DataTable GetLaborDataTable(DataTable dtMaterials, string jobId)
         {
-            DataTable dataTable = new DataTable();
+            DataTable dataTable = new DataTable
+            {
+                TableName = "Labor"
+            };
             Biz.Biz processIds = new Biz.Biz();
+
+            string x = processIds.GetProcessIDs(dtMaterials, jobId).ToString();
+            string[] stringSplit = x.Split(',');
+            int stringSplitElementCount = stringSplit.Count();
+
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
@@ -73,12 +84,17 @@ namespace FindOverUnderIssue.PelData
                 {
                     command.Connection = conn;
                     command.Parameters.AddWithValue("@jobId", SqlDbType.Char);
-                    command.Parameters.AddWithValue("@processIds", SqlDbType.VarChar);
+                    command.Parameters.AddWithValue("@p1", SqlDbType.VarChar);
 
                     command.Parameters["@jobId"].Value = jobId;
+                    command.Parameters["@p1"].Value = stringSplit[0];
 
-                    //run this in sql and with parameters defined and see if get same client error. "'W_DHT', 'W_DHT'" as processIds parameter
-                    command.Parameters["@processIds"].Value = processIds.GetProcessIDs(dtMaterials, jobId).ToString();
+                    for (int i = 1; i < stringSplitElementCount - 1; i++)
+                    {
+                        command.Parameters.AddWithValue("@p" + (i + 1), SqlDbType.VarChar);
+                        command.Parameters["@p" + (i + 1)].Value = stringSplit[i];
+                    }
+
                     try
                     {
                         conn.Open();
